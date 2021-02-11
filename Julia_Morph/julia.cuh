@@ -4,8 +4,8 @@
 
 void julia(void);
 
-void initColors(sf::Uint8* h_colorTable, int const max_iter);
+void initColors(sf::Uint8* h_colorTable, int max_iter);
 
-__global__ void cudaJulia(sf::Uint8* d_counts, sf::Uint8* d_colorTable, int const max_iter,
-    double const re_min, double const im_min, double const re_scale,
-    double const im_scale, double P, double Q);
+__global__ void cudaJulia(int w, int h, sf::Uint8* d_counts, sf::Uint8* d_colorTable,
+    int const max_iter, float re_min, float im_min, float re_scale, float im_scale,
+    float P, float Q);
