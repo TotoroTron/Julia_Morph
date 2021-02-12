@@ -6,19 +6,19 @@
 
 void julia(void)
 {   
-    //const int WIDTH = 1920; const int HEIGHT = 1080;
-    const int WIDTH = 2560; const int HEIGHT = 1440;
+    const int WIDTH = 1920; const int HEIGHT = 1080;
+    //const int WIDTH = 2560; const int HEIGHT = 1440;
     const int HALF_WIDTH = WIDTH / 2;
     const int HALF_HEIGHT = HEIGHT / 2;
     const int AREA = HEIGHT * WIDTH;
     const float RATIO = (float) WIDTH / HEIGHT;
 
     int setType = 1;
-    int max_iter = 200;
+    int max_iter = 240;
     float im_cent = 0.0; //imaginary axis center
     float re_cent = 0.0; //real axis center
-    float zoom = 1.0; //inverse of zoom]
-    float p = -1.26;
+    float zoom = 1.0;
+    float p = -1.3;
     float q = 0.0;
     float re_min = re_cent - (zoom * RATIO);
     float re_max = re_cent + (zoom * RATIO);
@@ -29,41 +29,26 @@ void julia(void)
     float fps;
     float fps_t = 0;
     int count1 = 0; int count2 = 0;
+    float ff = 1;
 
     sf::Clock clock = sf::Clock::Clock(); sf::Time previousTime = clock.getElapsedTime(); sf::Time currentTime;
     sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT, 32), "Julia Morph", sf::Style::Close | sf::Style::Fullscreen);
     sf::Font font; font.loadFromFile("arial.ttf");
     sf::Text text; text.setFont(font); text.setCharacterSize(18); text.setFillColor(sf::Color::White);
     sf::Texture texture; sf::Sprite sprite; sf::Image image; image.create(HEIGHT, WIDTH);
-
-
     sf::Uint8* d_colorTable;
     sf::Uint8* h_counts = new sf::Uint8[AREA * 4]; 
     sf::Uint8* d_counts = new sf::Uint8[AREA * 4];
-
     cudaMalloc(&d_counts, sizeof(sf::Uint8) * 4 * AREA);
-
 
     while (window.isOpen())
     {
         sf::Event event;
         while (window.pollEvent(event))
-        {
-            switch (event.type)
-            {
-            case sf::Event::Closed:
+            if( event.type == sf::Event::Closed)
                 window.close();
-                break;
-            }
-        }
-        re_min = re_cent - (zoom * RATIO);
-        re_max = re_cent + (zoom * RATIO);
-        im_min = im_cent - zoom;
-        im_max = im_cent + zoom;
-        re_scale = (re_max - re_min) / WIDTH;
-        im_scale = (im_max - im_min) / HEIGHT;
-        if (count1 == 50)
-        {
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape)) { window.close(); }
+        if (count1 == 10)
             if (sf::Mouse::isButtonPressed(sf::Mouse::Left))
             {
                 count1 = 0;
@@ -71,24 +56,55 @@ void julia(void)
                 im_cent = im_cent - im_scale * (HALF_HEIGHT - (float)mousePos.y);
                 re_cent = re_cent - re_scale * (HALF_WIDTH - (float)mousePos.x);
             }
-        }
         else
-        {
             count1++;
-        }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape)) { window.close(); }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space))
-        {
-            im_cent = 0.0; //imaginary axis center
-            re_cent = 0.0; //real axis center
-            zoom = 1.0; //inverse of zoom
-            p = -1.3;
-            q = 0.0;
-            max_iter = 240;
-        }
+            im_cent = 0.0; re_cent = 0.0; zoom = 1.0; p = -1.3; q = 0.0; max_iter = 240;
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Num1)) { setType = 1; }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Num2)) { setType = 2; }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Num3)) { setType = 3; }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LShift)) { ff = 10; }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LControl)) { ff = 0.01; }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W)) { q = q + (0.0001 * ff); }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A)) { p = p - (0.0001 * ff); }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S)) { q = q - (0.0001 * ff); }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D)) { p = p + (0.0001 * ff); }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::E)) { zoom = zoom * 0.9; }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Q)) { zoom = zoom * 1.1; }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::R)) { if (max_iter < 10000) { max_iter = max_iter + ff; } }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::F)) { if (max_iter > 100) { max_iter = max_iter - ff; } }
+
+        re_min = re_cent - (zoom * RATIO);
+        re_max = re_cent + (zoom * RATIO);
+        im_min = im_cent - zoom;
+        im_max = im_cent + zoom;
+        re_scale = (re_max - re_min) / WIDTH;
+        im_scale = (im_max - im_min) / HEIGHT;
+
+        sf::Uint8* h_colorTable = new sf::Uint8[(max_iter + 1) * 4];
+        initColors(h_colorTable, max_iter);
+        cudaMalloc(&d_colorTable, sizeof(sf::Uint8) * (max_iter + 1) * 4);
+        cudaMemcpy(d_colorTable, h_colorTable, sizeof(sf::Uint8) * 4 * max_iter + 4, cudaMemcpyHostToDevice);
+
+        //const dim3 blocksPerGrid(1440, 1, 1); const dim3 threadsPerBlock(640, 1, 1);
+        const dim3 blocksPerGrid(1080, 1, 1); const dim3 threadsPerBlock(480, 1, 1);
+        cudaJulia<<<blocksPerGrid, threadsPerBlock>>>
+            (WIDTH, HEIGHT, d_counts, d_colorTable, max_iter, re_min, im_min, re_scale, im_scale, p, q, setType);
+        cudaDeviceSynchronize();
+        cudaMemcpy(h_counts, d_counts, sizeof(sf::Uint8) * 4 * AREA, cudaMemcpyDeviceToHost);
+        image.create(WIDTH, HEIGHT, h_counts);
+
+        for (int y = HALF_HEIGHT-10; y < HALF_HEIGHT+10; y++)
+            image.setPixel(HALF_WIDTH, y, sf::Color::White);
+        for (int x = HALF_WIDTH-10; x < HALF_WIDTH+10; x++)
+            image.setPixel(x, HALF_HEIGHT, sf::Color::White);
+
+        currentTime = clock.getElapsedTime();
+        fps = 1.0f / (currentTime.asSeconds() - previousTime.asSeconds());
+        previousTime = currentTime;
+        if (count2 == 50) { fps_t = fps; count2 = 0; } else { count2++; }
+
+        char str1[200];
         char str2[100];
         switch (setType)
         {
@@ -102,62 +118,11 @@ void julia(void)
             sprintf(str2, "Experimental");
             break;
         }
-
-        float ff = 1;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LShift)) { ff = 100; }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LControl)) { ff = 0.01; }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W)) { q = q + (0.00001 * ff); }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A)) { p = p - (0.00001 * ff); }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S)) { q = q - (0.00001 * ff); }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D)) { p = p + (0.00001 * ff); }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::E)) { zoom = zoom * 0.9; }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Q)) { zoom = zoom * 1.1; }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::R)) { if (max_iter < 10000) { max_iter = max_iter + ff; } }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::F)) { if (max_iter > 100) { max_iter = max_iter - ff; } }
-
-        sf::Uint8* h_colorTable = new sf::Uint8[(max_iter + 1) * 4];
-        initColors(h_colorTable, max_iter);
-        cudaMalloc(&d_colorTable, sizeof(sf::Uint8) * (max_iter + 1) * 4);
-        cudaMemcpy(d_colorTable, h_colorTable, sizeof(sf::Uint8) * 4 * max_iter + 4, cudaMemcpyHostToDevice);
-
-        const dim3 blocksPerGrid(1440, 1, 1); const dim3 threadsPerBlock(640, 1, 1);
-        //const dim3 blocksPerGrid(1080 * 4, 1, 1); const dim3 threadsPerBlock(480, 1, 1);
-        cudaJulia<<<blocksPerGrid, threadsPerBlock>>>
-            (WIDTH, HEIGHT, d_counts, d_colorTable, max_iter, re_min, im_min, re_scale, im_scale, p, q, setType);
-        cudaDeviceSynchronize();
-        cudaMemcpy(h_counts, d_counts, sizeof(sf::Uint8) * 4 * AREA, cudaMemcpyDeviceToHost);
-
-        image.create(WIDTH, HEIGHT, h_counts);
-
-        for (int y = HALF_HEIGHT-10; y < HALF_HEIGHT+10; y++)
-        {
-            image.setPixel(HALF_WIDTH, y, sf::Color::White);
-        }
-        for (int x = HALF_WIDTH-10; x < HALF_WIDTH+10; x++)
-        {
-            image.setPixel(x, HALF_HEIGHT, sf::Color::White);
-        }
-
-        currentTime = clock.getElapsedTime();
-        fps = 1.0f / (currentTime.asSeconds() - previousTime.asSeconds());
-        previousTime = currentTime;
-
-        if (count2 == 50)
-        {
-            fps_t = fps;
-            count2 = 0;
-        }
-        else
-        {
-            count2++;
-        }
-
-        char str1[200];
+        sprintf(str1, "C = %1.5f + %1.5f*j\nZoom = %0.2E\nIterations = %i\nFPS = %3.0f\nSet Type = %s", p, q, zoom, max_iter, fps_t, str2);
         window.clear();
         texture.loadFromImage(image);
         sprite.setTexture(texture);
         window.draw(sprite);
-        sprintf(str1, "C = %1.5f + %1.5f*j\nZoom = %0.2E\nIterations = %i\nFPS = %3.0f\nSet Type = %s", p, q, zoom, max_iter, fps_t, str2);
         text.setString(str1);
         window.draw(text);
         window.display();
