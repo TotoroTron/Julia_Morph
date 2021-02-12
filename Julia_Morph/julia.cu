@@ -105,11 +105,11 @@ void julia(void)
 
         float ff = 1;
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LShift)) { ff = 100; }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LControl)) { ff = 0.001; }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W)) { q += (0.00001 * ff); }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A)) { p -= (0.00001 * ff); }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S)) { q -= (0.00001 * ff); }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D)) { p += (0.00001 * ff); }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LControl)) { ff = 0.01; }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W)) { q = q + (0.00001 * ff); }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A)) { p = p - (0.00001 * ff); }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S)) { q = q - (0.00001 * ff); }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D)) { p = p + (0.00001 * ff); }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::E)) { zoom = zoom * 0.9; }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Q)) { zoom = zoom * 1.1; }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::R)) { if (max_iter < 10000) { max_iter = max_iter + ff; } }
@@ -139,7 +139,7 @@ void julia(void)
         }
 
         currentTime = clock.getElapsedTime();
-        fps = 1.0f / (currentTime.asSeconds() - previousTime.asSeconds()); // the asSeconds returns a float
+        fps = 1.0f / (currentTime.asSeconds() - previousTime.asSeconds());
         previousTime = currentTime;
 
         if (count2 == 50)
@@ -219,7 +219,7 @@ __global__ void cudaJulia(int w, int h, sf::Uint8* d_counts, sf::Uint8* d_colorT
         d_counts[m] = d_colorTable[iter_4];
         d_counts[m + 1] = d_colorTable[iter_4 + 1];
         d_counts[m + 2] = d_colorTable[iter_4 + 2];
-        d_counts[m + 3] = d_colorTable[iter_4 + 3];
+        d_counts[m + 3] = 255;
     }
 };
 
