@@ -32,7 +32,7 @@ void julia(void)
     float ff = 1;
 
     sf::Clock clock = sf::Clock::Clock(); sf::Time previousTime = clock.getElapsedTime(); sf::Time currentTime;
-    sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT, 32), "Julia Morph", sf::Style::Close | sf::Style::Fullscreen);
+    sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT, 32), "Julia Morph", sf::Style::Close | sf::Style::Titlebar);
     sf::Font font; font.loadFromFile("arial.ttf");
     sf::Text text; text.setFont(font); text.setCharacterSize(18); text.setFillColor(sf::Color::White);
     sf::Texture texture; sf::Sprite sprite; sf::Image image; image.create(HEIGHT, WIDTH);
@@ -59,7 +59,7 @@ void julia(void)
         else
             count1++;
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space))
-            im_cent = 0.0; re_cent = 0.0; zoom = 1.0; p = -1.3; q = 0.0; max_iter = 240;
+            { im_cent = 0.0; re_cent = 0.0; zoom = 1.0; p = -1.3; q = 0.0; max_iter = 240; }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Num1)) { setType = 1; }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Num2)) { setType = 2; }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Num3)) { setType = 3; }
@@ -74,6 +74,7 @@ void julia(void)
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::R)) { if (max_iter < 10000) { max_iter = max_iter + ff; } }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::F)) { if (max_iter > 100) { max_iter = max_iter - ff; } }
 
+        float ff = 1;
         re_min = re_cent - (zoom * RATIO);
         re_max = re_cent + (zoom * RATIO);
         im_min = im_cent - zoom;
@@ -81,13 +82,14 @@ void julia(void)
         re_scale = (re_max - re_min) / WIDTH;
         im_scale = (im_max - im_min) / HEIGHT;
 
+        //const dim3 blocksPerGrid(1440, 1, 1); const dim3 threadsPerBlock(640, 1, 1);
+        const dim3 blocksPerGrid(1080, 1, 1); const dim3 threadsPerBlock(480, 1, 1);
+
         sf::Uint8* h_colorTable = new sf::Uint8[(max_iter + 1) * 4];
         initColors(h_colorTable, max_iter);
         cudaMalloc(&d_colorTable, sizeof(sf::Uint8) * (max_iter + 1) * 4);
         cudaMemcpy(d_colorTable, h_colorTable, sizeof(sf::Uint8) * 4 * max_iter + 4, cudaMemcpyHostToDevice);
 
-        //const dim3 blocksPerGrid(1440, 1, 1); const dim3 threadsPerBlock(640, 1, 1);
-        const dim3 blocksPerGrid(1080, 1, 1); const dim3 threadsPerBlock(480, 1, 1);
         cudaJulia<<<blocksPerGrid, threadsPerBlock>>>
             (WIDTH, HEIGHT, d_counts, d_colorTable, max_iter, re_min, im_min, re_scale, im_scale, p, q, setType);
         cudaDeviceSynchronize();
