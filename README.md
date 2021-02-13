@@ -4,32 +4,34 @@ My first C++ project utilizing CUDA acceleration and SFML API. This is a basic a
 
 The application visualizes the Julia set for the Mandelbrot Set as well as variations of the Mandelbrot Set like the Burning Ship and the Cubic Mandelbrot.
 
-  Mandelbrot : Z(n+1) = Z(n)^2 + C
+	Mandelbrot : Z(n+1) = Z(n)^2 + C
 
-  Burning Ship : Z(n+1) + |Z(n)^2| + C
+	Burning Ship : Z(n+1) + |Z(n)^2| + C
 
-  Cubic Mandelbrot : Z(n+1) = Z(n)^3 + C
+	Cubic Mandelbrot : Z(n+1) = Z(n)^3 + C
 
-
+	MandelBox : https://sites.google.com/site/mandelbox/what-is-a-mandelbox
 
 Controls:
 
-  W, A, S, D - shifts the value of C on the complex plane
+	W, A, S, D - shifts the value of C on the complex plane. In Mandelbox mode, shifts S and R values.
 
-  Q, E - zooms in/out of center
+	Q, E - zooms in/out of center
 
-  Left Mouse - specify new center
+	Left Mouse - specify new center
 
-  R, F - increase/decrease iteration threshold
+	R, F - increase/decrease iteration threshold
 
-  LShift - high speed shifting
-  
-  LControl - low speed shifting
-  
-  1 - Burning Ship
+	LShift - high speed shifting
 
-  2 - Mandelbrot
+	LControl - low speed shifting
 
-  3 - Cubic Mandelbrot
+	1 - Burning Ship
 
-  Space - resets all parameters
+	2 - Mandelbrot
+
+	3 - Cubic Mandelbrot
+
+	4 - Mandelbox
+
+	Space - resets all parameters
