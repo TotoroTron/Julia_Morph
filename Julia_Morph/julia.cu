@@ -6,6 +6,7 @@
 
 void julia(void)
 {   
+    //const int WIDTH = 640; const int HEIGHT = 480;
     const int WIDTH = 1920; const int HEIGHT = 1080;
     //const int WIDTH = 2560; const int HEIGHT = 1440;
     const int HALF_WIDTH = WIDTH / 2;
@@ -18,8 +19,11 @@ void julia(void)
     float im_cent = 0.0; //imaginary axis center
     float re_cent = 0.0; //real axis center
     float zoom = 1.0;
-    float p = -1.3;
+    float p = 0.0;
     float q = 0.0;
+    float z = 1.7;
+    float x = 0.4;
+    float c = 1.0;
     float re_min = re_cent - (zoom * RATIO);
     float re_max = re_cent + (zoom * RATIO);
     float im_min = im_cent - zoom;
@@ -49,6 +53,7 @@ void julia(void)
                 window.close();
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape)) { window.close(); }
         if (count1 == 10)
+        {
             if (sf::Mouse::isButtonPressed(sf::Mouse::Left))
             {
                 count1 = 0;
@@ -56,25 +61,33 @@ void julia(void)
                 im_cent = im_cent - im_scale * (HALF_HEIGHT - (float)mousePos.y);
                 re_cent = re_cent - re_scale * (HALF_WIDTH - (float)mousePos.x);
             }
+        }
         else
+        {
             count1++;
+        }
+        float ff = 1; float nn = 1;
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space))
-            { im_cent = 0.0; re_cent = 0.0; zoom = 1.0; p = -1.3; q = 0.0; max_iter = 240; }
+        {
+            im_cent = 0.0; re_cent = 0.0; zoom = 1.0; p = 0.0; q = 0.0; max_iter = 240; 
+            z = 3.12; x = 0.66; c = 1.0;
+        }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Num1)) { setType = 1; }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Num2)) { setType = 2; }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Num3)) { setType = 3; }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Num4)) { setType = 4; }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LShift)) { ff = 10; }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LControl)) { ff = 0.01; }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W)) { q = q + (0.0001 * ff); }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A)) { p = p - (0.0001 * ff); }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S)) { q = q - (0.0001 * ff); }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D)) { p = p + (0.0001 * ff); }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LAlt)) { nn = -1.0; }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W)) { q = q + (0.0001 * ff); z = z + (0.001 * ff); }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A)) { p = p - (0.0001 * ff); x = x - (0.001 * ff); }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S)) { q = q - (0.0001 * ff); z = z - (0.001 * ff); }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D)) { p = p + (0.0001 * ff); x = x + (0.001 * ff); }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::E)) { zoom = zoom * 0.9; }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Q)) { zoom = zoom * 1.1; }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::R)) { if (max_iter < 10000) { max_iter = max_iter + ff; } }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::F)) { if (max_iter > 100) { max_iter = max_iter - ff; } }
 
-        float ff = 1;
         re_min = re_cent - (zoom * RATIO);
         re_max = re_cent + (zoom * RATIO);
         im_min = im_cent - zoom;
@@ -83,7 +96,8 @@ void julia(void)
         im_scale = (im_max - im_min) / HEIGHT;
 
         //const dim3 blocksPerGrid(1440, 1, 1); const dim3 threadsPerBlock(640, 1, 1);
-        const dim3 blocksPerGrid(1080, 1, 1); const dim3 threadsPerBlock(480, 1, 1);
+        const dim3 blocksPerGrid(1080*2, 1, 1); const dim3 threadsPerBlock(960, 1, 1);
+        //const dim3 blocksPerGrid(640, 1, 1); const dim3 threadsPerBlock(480, 1, 1);
 
         sf::Uint8* h_colorTable = new sf::Uint8[(max_iter + 1) * 4];
         initColors(h_colorTable, max_iter);
@@ -91,7 +105,7 @@ void julia(void)
         cudaMemcpy(d_colorTable, h_colorTable, sizeof(sf::Uint8) * 4 * max_iter + 4, cudaMemcpyHostToDevice);
 
         cudaJulia<<<blocksPerGrid, threadsPerBlock>>>
-            (WIDTH, HEIGHT, d_counts, d_colorTable, max_iter, re_min, im_min, re_scale, im_scale, p, q, setType);
+            (WIDTH, HEIGHT, d_counts, d_colorTable, max_iter, re_min, im_min, re_scale, im_scale, p, q, setType, z, x, c);
         cudaDeviceSynchronize();
         cudaMemcpy(h_counts, d_counts, sizeof(sf::Uint8) * 4 * AREA, cudaMemcpyDeviceToHost);
         image.create(WIDTH, HEIGHT, h_counts);
@@ -117,10 +131,13 @@ void julia(void)
             sprintf(str2, "Mandelbrot");
             break;
         case 3:
+            sprintf(str2, "Cubic Mandelbrot");
+            break;
+        case 4:
             sprintf(str2, "Experimental");
             break;
         }
-        sprintf(str1, "C = %1.5f + %1.5f*j\nZoom = %0.2E\nIterations = %i\nFPS = %3.0f\nSet Type = %s", p, q, zoom, max_iter, fps_t, str2);
+        sprintf(str1, "C = %1.5f + %1.5f*j\nZoom = %0.2E\nIterations = %i\nFPS = %3.0f\nSet Type = %s\ns = %1.2f, r = %1.2f, f = %1.2f", p, q, zoom, max_iter, fps_t, str2, z, x, c);
         window.clear();
         texture.loadFromImage(image);
         sprite.setTexture(texture);
@@ -154,7 +171,7 @@ void initColors(sf::Uint8* h_colorTable, int max_iter)
 
 __global__ void cudaJulia(int w, int h, sf::Uint8* d_counts, sf::Uint8* d_colorTable,
     int const max_iter, float re_min, float im_min, float re_scale, float im_scale,
-    float P, float Q, int setType)
+    float P, float Q, int setType, float Z, float X, float C)
 {   
     int pixPerThread = w * h / (gridDim.x * blockDim.x);
     int tid = threadIdx.x + (blockIdx.x * blockDim.x);
@@ -178,11 +195,15 @@ __global__ void cudaJulia(int w, int h, sf::Uint8* d_counts, sf::Uint8* d_colorT
                 iter = mandelbrot(iter, max_iter, A, B, P, Q);
                 break;
             case 3:
-                iter = experimental(iter, max_iter, A, B, P, Q);
+                iter = mandelCubed(iter, max_iter, A, B, P, Q);
+                break;
+            case 4:
+                iter = experimental(iter, max_iter, A, B, P, Q, Z, X, C);
                 break;
         }
         
         int iter_4 = iter * 4;
+        
         d_counts[m] = d_colorTable[iter_4];
         d_counts[m + 1] = d_colorTable[iter_4 + 1];
         d_counts[m + 2] = d_colorTable[iter_4 + 2];
@@ -218,16 +239,68 @@ __device__ int burningShip(int iter, int max_iter, float A, float B, float P, fl
     return iter;
 }
 
-__device__ int experimental(int iter, int max_iter, float A, float B, float P, float Q)
+__device__ int mandelCubed(int iter, int max_iter, float A, float B, float P, float Q)
 {
     while (iter < max_iter)
     {
-        float tmp = (A*A*A - 3*A*B*B) + P;
-        B = (-B*B*B+3*A*A*B) + Q;
+        float tmp = (A * A * A - 3 * A * B * B) + P;
+        B = (-B * B * B + 3 * A * A * B) + Q;
         A = tmp;
         if (A * A + B * B > 4)
             break;
         iter++;
+    }
+    return iter;
+}
+
+__device__ int experimental(int iter, int max_iter, float A, float B, float P, float Q, float z, float x, float c)
+{   //MandelBox
+    float s = z; float r = x; float f = c; float r_sq = r * r;
+    //float D = 0.0;
+    while (iter < max_iter)
+    {
+        //float mag_sq = (A * A) + (B * B) + (D * D);
+        float mag_sq = (A * A) + (B * B);
+        float mag = sqrtf(mag_sq);
+        if (mag > 4.0)
+            break;
+        iter++;
+
+        if (A > 1.0)
+            A = 2.0 - A;
+        else if (A < -1.0)
+            A = -2.0 - A;
+
+        if (B > 1.0)
+            B = 2.0 - B;
+        else if (B < -1.0)
+            B = -2.0 - B;
+
+        //if (D > 1.0)
+        //    D = 2.0 - D;
+        //else if (D < -1.0)
+        //    D = -2.0 - D;
+
+        //A *= f;
+        //B *= f;
+        //D *= f;
+
+        if (mag < r)
+        {
+            A = A/r_sq;
+            B = B/r_sq;
+            //D = D/r_sq;
+        }
+        else if (mag < 1.0)
+        {
+            A = A/mag_sq;
+            B = B/mag_sq;
+            //D = D/mag_sq;
+        }
+
+        A = A*s;
+        B = B*s;
+        //D = D*s;
     }
     return iter;
 }
