@@ -11,9 +11,9 @@ void julia(void)
     const int WIDTH = 1920; const int HEIGHT = 1080;
     //const int WIDTH = 2560; const int HEIGHT = 1440;
     
-    //const dim3 blocksPerGrid(640, 1, 1); const dim3 threadsPerBlock(360, 1, 1);
-    //const dim3 blocksPerGrid(1280, 1, 1); const dim3 threadsPerBlock(720, 1, 1);
-    const dim3 blocksPerGrid(220, 1, 1); const dim3 threadsPerBlock(512, 1, 1);
+    //const dim3 blocksPerGrid(640, 1, 1); const dim3 threadsPerBlock(256, 1, 1);
+    //const dim3 blocksPerGrid(320, 1, 1); const dim3 threadsPerBlock(720, 1, 1);
+    const dim3 blocksPerGrid(160, 1, 1); const dim3 threadsPerBlock(240, 1, 1);
     //const dim3 blocksPerGrid(1440 * 2, 1, 1); const dim3 threadsPerBlock(640, 1, 1);
 
     const int HALF_WIDTH = WIDTH / 2;
@@ -26,11 +26,11 @@ void julia(void)
     float im_cent = 0.0; //imaginary axis center
     float re_cent = 0.0; //real axis center
     float zoom = 1.0;
-    float p = -1.5;
-    float q = -0.1;
-    float z = -3.75;
-    float x = 1.65;
-    float c = 1.0;
+    float p = -1.5; //C imaginary component
+    float q = -0.1; //C real componenet
+    float z = -3.75; //mandelbox s dimention
+    float x = 1.65; //mandelbox r dimension
+    float c = 1.0; //mandelbox f dimension
     float re_min = re_cent - (zoom * RATIO);
     float re_max = re_cent + (zoom * RATIO);
     float im_min = im_cent - zoom;
@@ -43,14 +43,12 @@ void julia(void)
     float ff = 1;
 
     sf::Clock clock = sf::Clock::Clock(); sf::Time previousTime = clock.getElapsedTime(); sf::Time currentTime;
-    sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT, 32), "Julia Morph", sf::Style::Close | sf::Style::Titlebar);
+    sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "Julia Morph", sf::Style::Close | sf::Style::Fullscreen);
     sf::Font font; font.loadFromFile("arial.ttf");
-    sf::Text text; text.setFont(font); text.setCharacterSize(18); text.setFillColor(sf::Color::White);
+    sf::Text text; text.setFont(font); text.setCharacterSize(16); text.setFillColor(sf::Color::White);
     sf::Texture texture;
     texture.create(WIDTH, HEIGHT);
     sf::Sprite sprite;
-    sf::Image image;
-    image.create(HEIGHT, WIDTH);
     sf::Uint8* d_colorTable;
     sf::Uint8* h_counts = new sf::Uint8[AREA * 4]; 
     sf::Uint8* d_counts = new sf::Uint8[AREA * 4];
@@ -109,18 +107,17 @@ void julia(void)
         sf::Uint8* h_colorTable = new sf::Uint8[(max_iter + 1) * 4];
         initColors(h_colorTable, max_iter);
         cudaMalloc(&d_colorTable, sizeof(sf::Uint8) * (max_iter + 1) * 4);
-        cudaMemcpy(d_colorTable, h_colorTable, sizeof(sf::Uint8) * 4 * max_iter + 4, cudaMemcpyHostToDevice);
+        cudaMemcpy(d_colorTable, h_colorTable, sizeof(sf::Uint8) * (max_iter + 1) * 4, cudaMemcpyHostToDevice);
 
         cudaJulia<<<blocksPerGrid, threadsPerBlock>>>
             (WIDTH, HEIGHT, d_counts, d_colorTable, max_iter, re_min, im_min, re_scale, im_scale, p, q, setType, z, x, c);
         cudaDeviceSynchronize();
         cudaMemcpy(h_counts, d_counts, sizeof(sf::Uint8) * 4 * AREA, cudaMemcpyDeviceToHost);
-        //image.create(WIDTH, HEIGHT, h_counts);
 
         currentTime = clock.getElapsedTime();
         fps = 1.0f / (currentTime.asSeconds() - previousTime.asSeconds());
         previousTime = currentTime;
-        if (count2 == 50) { fps_t = fps; count2 = 0; } else { count2++; }
+        if (count2 == 20) { fps_t = fps; count2 = 0; } else { count2++; }
         
         char str1[200];
         char str2[100];
