@@ -31,4 +31,4 @@ __device__ int burningShip(int iter, int max_iter, float A, float B, float P, fl
 
 __device__ int mandelCubed(int iter, int max_iter, float A, float B, float P, float Q);
 
-__device__ int experimental(int iter, int max_iter, float A, float B, float P, float Q, float z, float x, float c);
+__device__ int experimental(int iter, int max_iter, float A, float B, float s, float r, float f);

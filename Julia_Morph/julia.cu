@@ -28,9 +28,10 @@ void julia(void)
     float zoom = 1.0;
     float p = -1.5; //C imaginary component
     float q = -0.1; //C real componenet
-    float z = -3.75; //mandelbox s dimention
-    float x = 1.65; //mandelbox r dimension
-    float c = 1.0; //mandelbox f dimension
+    
+    float s = -3.75; //mandelbox s dimention
+    float r = 1.65; //mandelbox r dimension
+    float f = 1.0; //mandelbox f dimension
     float re_min = re_cent - (zoom * RATIO);
     float re_max = re_cent + (zoom * RATIO);
     float im_min = im_cent - zoom;
@@ -79,7 +80,7 @@ void julia(void)
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space))
         {
             im_cent = 0.0; re_cent = 0.0; zoom = 1.0; p = -1.5; q = -0.1; max_iter = 200; 
-            z = -3.75; x = 1.65; c = 1.0;
+            s = -3.75; r = 1.65; f = 1.0;
         }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Num1)) { setType = 1; }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Num2)) { setType = 2; }
@@ -88,14 +89,16 @@ void julia(void)
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LShift)) { ff = 10; }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LControl)) { ff = 0.01; }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LAlt)) { nn = -1.0; }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W)) { q = q + (0.0001 * ff); z = z + (0.001 * ff); }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A)) { p = p - (0.0001 * ff); x = x - (0.001 * ff); }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S)) { q = q - (0.0001 * ff); z = z - (0.001 * ff); }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D)) { p = p + (0.0001 * ff); x = x + (0.001 * ff); }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W)) { q = q + (0.0001 * ff); s = s + (0.001 * ff); }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A)) { p = p - (0.0001 * ff); r = r - (0.001 * ff); }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S)) { q = q - (0.0001 * ff); s = s - (0.001 * ff); }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D)) { p = p + (0.0001 * ff); r = r + (0.001 * ff); }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Z)) { f = f - (0.001 * ff); }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::C)) { f = f + (0.001 * ff); }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::E)) { zoom = zoom * 0.95; }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Q)) { zoom = zoom * 1.05; }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::R)) { if (max_iter < 10000) { max_iter = max_iter + ff; } }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::F)) { if (max_iter > 100) { max_iter = max_iter - ff; } }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::F)) { if (max_iter > 20) { max_iter = max_iter - ff; } }
 
         re_min = re_cent - (zoom * RATIO);
         re_max = re_cent + (zoom * RATIO);
@@ -110,7 +113,7 @@ void julia(void)
         cudaMemcpy(d_colorTable, h_colorTable, sizeof(sf::Uint8) * (max_iter + 1) * 4, cudaMemcpyHostToDevice);
 
         cudaJulia<<<blocksPerGrid, threadsPerBlock>>>
-            (WIDTH, HEIGHT, d_counts, d_colorTable, max_iter, re_min, im_min, re_scale, im_scale, p, q, setType, z, x, c);
+            (WIDTH, HEIGHT, d_counts, d_colorTable, max_iter, re_min, im_min, re_scale, im_scale, p, q, setType, s, r, f);
         cudaDeviceSynchronize();
         cudaMemcpy(h_counts, d_counts, sizeof(sf::Uint8) * 4 * AREA, cudaMemcpyDeviceToHost);
 
@@ -136,7 +139,7 @@ void julia(void)
             sprintf(str2, "Experimental");
             break;
         }
-        sprintf(str1, "C = %1.5f + %1.5f*j\nZoom = %0.2E\nIterations = %i\nFPS = %3.0f\nSet Type = %s\ns = %1.2f, r = %1.2f, f = %1.2f", p, q, zoom, max_iter, fps_t, str2, z, x, c);
+        sprintf(str1, "C = %1.5f + %1.5f*j\nZoom = %0.2E\nIterations = %i\nFPS = %3.0f\nSet Type = %s\ns = %1.2f, r = %1.2f, f = %1.2f", p, q, zoom, max_iter, fps_t, str2, s, r, f);
         window.clear();
         texture.update(h_counts);
         sprite.setTexture(texture);
@@ -197,7 +200,7 @@ __global__ void cudaJulia(int w, int h, sf::Uint8* d_counts, sf::Uint8* d_colorT
                 iter = mandelCubed(iter, max_iter, A, B, P, Q);
                 break;
             case 4:
-                iter = experimental(iter, max_iter, A, B, P, Q, Z, X, C);
+                iter = experimental(iter, max_iter, A, B, Z, X, C);
                 break;
         }
         
@@ -252,40 +255,45 @@ __device__ int mandelCubed(int iter, int max_iter, float A, float B, float P, fl
     return iter;
 }
 
-__device__ int experimental(int iter, int max_iter, float A, float B, float P, float Q, float z, float x, float c)
+__device__ int experimental(int iter, int max_iter, float A, float B, float s, float r, float f)
 {   //Mandelbox
-    float s = z; float r = x; float f = c; float r_sq = r * r;
+    float r_sq = r * r;
+    float X = 0.0; float Y = 0.0;
     while (iter < max_iter)
     {
-        float mag_sq = (A * A) + (B * B);
+        float mag_sq = (X * X) + (Y * Y);
         float mag = sqrtf(mag_sq);
         if (mag > 4.0)
             break;
         iter++;
 
-        if (A > 1.0)
-            A = 2.0 - A;
-        else if (A < -1.0)
-            A = -2.0 - A;
+        if (X > 1.0)
+            X = 2.0 - X;
+        else if (X < -1.0)
+            X = -2.0 - X;
 
-        if (B > 1.0)
-            B = 2.0 - B;
-        else if (B < -1.0)
-            B = -2.0 - B;
+        if (Y > 1.0)
+            Y = 2.0 - Y;
+        else if (Y < -1.0)
+            Y = -2.0 - Y;
 
-        if (mag < r)
+        X = X * f;
+        Y = Y * f;
+
+        if (mag < r_sq)
         {
-            A = A / r_sq;
-            B = B / r_sq;
+            X = X / r_sq;
+            Y = Y / r_sq;
         }
-        else if (mag < 1.0)
+        else if (mag_sq < 1.0)
         {
-            A = A / mag_sq;
-            B = B / mag_sq;
+            X = X / mag;
+            Y = Y / mag;
         }
 
-        A = A * s;
-        B = B * s;
+        X = X * s + A;
+        Y = Y * s + B;
+
     }
     return iter;
 }
