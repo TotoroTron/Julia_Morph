@@ -27,8 +27,10 @@ __global__ void cudaJulia(int w, int h, sf::Uint8* d_counts, sf::Uint8* d_colorT
 
 __device__ int mandelbrot(int iter, int max_iter, double A, double B, double P, double Q);
 
-__device__ int burningShip(int iter, int max_iter, double A, double B, double P, double Q);
+__device__ int burningShipJulia(int iter, int max_iter, double A, double B, double P, double Q);
 
 __device__ int mandelCubed(int iter, int max_iter, double A, double B, double P, double Q);
 
 __device__ int experimental(int iter, int max_iter, double A, double B, double s, double r, double f);
+
+__device__ int burningShip(int iter, int max_iter, double A, double B);

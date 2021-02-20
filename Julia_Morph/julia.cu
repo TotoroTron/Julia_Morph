@@ -44,7 +44,7 @@ void julia(void)
     double ff = 1;
 
     sf::Clock clock = sf::Clock::Clock(); sf::Time previousTime = clock.getElapsedTime(); sf::Time currentTime;
-    sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "Julia Morph", sf::Style::Close | sf::Style::Titlebar);
+    sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "Julia Morph", sf::Style::Close | sf::Style::Fullscreen);
     sf::Font font; font.loadFromFile("arial.ttf");
     sf::Text text; text.setFont(font); text.setCharacterSize(16); text.setFillColor(sf::Color::White);
     sf::Texture texture;
@@ -82,6 +82,7 @@ void julia(void)
             im_cent = 0.0; re_cent = 0.0; zoom = 1.0; p = -1.5; q = -0.1; max_iter = 20; 
             s = -2.75; r = 0.75; f = 1.0;
         }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Num0)) { setType = 0; }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Num1)) { setType = 1; }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Num2)) { setType = 2; }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Num3)) { setType = 3; }
@@ -126,8 +127,11 @@ void julia(void)
         char str2[100];
         switch (setType)
         {
-        case 1:
+        case 0:
             sprintf(str2, "Burning Ship");
+            break;
+        case 1:
+            sprintf(str2, "Burning Ship Julia");
             break;
         case 2:
             sprintf(str2, "Mandelbrot");
@@ -191,8 +195,11 @@ __global__ void cudaJulia(int w, int h, sf::Uint8* d_counts, sf::Uint8* d_colorT
 
         switch (setType)
         {
+            case 0:
+                iter = burningShip(iter, max_iter, A, B);
+                break;
             case 1:
-                iter = burningShip(iter, max_iter, A, B, P, Q);
+                iter = burningShipJulia(iter, max_iter, A, B, P, Q);
                 break;
             case 2:
                 iter = mandelbrot(iter, max_iter, A, B, P, Q);
@@ -228,7 +235,22 @@ __device__ int mandelbrot(int iter, int max_iter, double A, double B, double P, 
     return iter;
 }
 
-__device__ int burningShip(int iter, int max_iter, double A, double B, double P, double Q)
+__device__ int burningShip(int iter, int max_iter, double P, double Q)
+{
+    double A = 0.0; double B = 0.0;
+    while (iter < max_iter)
+    {
+        double tmp = (A * A) - (B * B) + P;
+        B = fabsf(2 * A * B) + Q;
+        A = tmp;
+        if (A * A + B * B > 4)
+            break;
+        iter++;
+    }
+    return iter;
+}
+
+__device__ int burningShipJulia(int iter, int max_iter, double A, double B, double P, double Q)
 {
     while (iter < max_iter)
     {
