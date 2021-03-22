@@ -44,4 +44,8 @@ https://www.youtube.com/watch?v=c5Z2mGP4zmE
 
 Pictures:
 ![Screenshot](mandelbrot_0.png)
+![Screenshot](mandelbrot_1.png)
+![Screenshot](burningship_0.png)
+![Screenshot](burningship_1.png)
+![Screenshot](burningship_2.png)
 
