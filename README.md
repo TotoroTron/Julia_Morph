@@ -11,29 +11,6 @@ The application visualizes the Julia set for the Mandelbrot Set as well as some 
 
 	MandelBox : https://sites.google.com/site/mandelbox/what-is-a-mandelbox
 
-Controls:
-
-	W, A, S, D - shifts the value of C on the complex plane. In Mandelbox mode, shifts S and R values.
-
-	Q, E - zooms in/out of center
-
-	Left Mouse - specify new center
-
-	R, F - increase/decrease iteration threshold
-
-	LShift - high speed shifting
-
-	LControl - low speed shifting
-
-	1 - Burning Ship
-
-	2 - Mandelbrot
-
-	3 - Cubic Mandelbrot
-
-	4 - Mandelbox
-
-	Space - resets all parameters
 
 Youtube Video Demos: 
 	
